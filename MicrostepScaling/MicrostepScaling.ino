@@ -15,7 +15,7 @@ AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 #include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
-byte microstepsVal = 16;
+byte microstepsVal = 4;
 
 unsigned long prevMillis;
 
@@ -58,12 +58,12 @@ void loop() {
     delay(100);
     if (isClockwise) {
       //stepper.move(200); // Move 400 steps.
-      moveScaled(200, 500, 400, microstepsVal);
+      moveScaled(200, 2000, 800, microstepsVal);
       isClockwise = false;
     }
     else {
       //stepper.move(-200); // Move 400 steps in the opposite direction.
-      moveScaled(-200, 500, 200, microstepsVal);
+      moveScaled(-200, 2000, 800, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
