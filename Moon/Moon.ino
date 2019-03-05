@@ -76,8 +76,8 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  moveScaled(8000, 200, 1000, microstepsVal);
-  //home(2000);
+ // moveScaled(8000, 200, 1000, microstepsVal);
+  home(17400);
 }
 
 void loop() {
@@ -90,11 +90,11 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(16000, 200, 600, microstepsVal);
+      moveScaled(17200, 200, 600, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-16000, 200, 600, microstepsVal);
+      moveScaled(-17300, 200, 600, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
@@ -122,7 +122,7 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
 // Home 
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 300, 4);
+  moveScaled(steps, 200, 600, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
