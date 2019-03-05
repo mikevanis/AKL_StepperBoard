@@ -26,7 +26,7 @@ AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 #include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
-byte microstepsVal = 8;
+byte microstepsVal = 16;
 
 unsigned long prevMillis;
 
@@ -45,9 +45,9 @@ void setup() {
   digitalWrite(TX_EN, HIGH);
 
   SPI.begin();
-  Serial.begin(9600);
+  Serial.begin(115600);
   while (!Serial);
-  Serial.println("Start...");
+  //Serial.println("Start...");
   pinMode(CS_PIN, OUTPUT);
   digitalWrite(CS_PIN, HIGH);
   pinMode(CS2_PIN, OUTPUT);
@@ -56,8 +56,8 @@ void setup() {
   digitalWrite(CS2_PIN, LOW);
   digitalWrite(CS_PIN, HIGH);
   driver.begin();
-  driver.rms_current(RMS_CURRENT); // RMS current - increase to 800 or 1000 to get more torque. Although you'll need to put a heatsink on the chip.
-  driver.stealthChop(1); // Enable extremely quiet stepping.
+  driver.rms_current(RMS_CURRENT);
+  driver.stealthChop(1);
   driver.stealth_autoscale(1);
   driver.microsteps(microstepsVal);
 
@@ -65,52 +65,41 @@ void setup() {
   digitalWrite(CS2_PIN, HIGH);
   digitalWrite(CS_PIN, LOW);
   driver2.begin();
-  driver2.rms_current(RMS_CURRENT); // RMS current - increase to 800 or 1000 to get more torque. Although you'll need to put a heatsink on the chip.
-  driver2.stealthChop(1); // Enable extremely quiet stepping.
+  driver2.rms_current(RMS_CURRENT);
+  driver2.stealthChop(1);
   driver2.stealth_autoscale(1);
   driver2.microsteps(microstepsVal);
 #endif
 
-  stepper.setMaxSpeed(2000); // Max speed in steps / second. Do not set higher than 2000.
-  stepper.setAcceleration(500); // Purely aesthetic, the lower the acceleration value, the slower the ramp at start / end.
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  moveScaled(8000, 200, 1000, microstepsVal);
   //home(2000);
 }
 
 void loop() {
   if (stepper.distanceToGo() == 0) {
-    Serial.println("Finished steps.");
-    
     digitalWrite(LED, HIGH);
     delay(10);
     digitalWrite(LED, LOW);
     //stepper.disableOutputs();
     delay(100);
+    moveScaled(6000, 50, 200, microstepsVal);
     if (isClockwise) {
-      moveScaled(16000, 200, 600, microstepsVal);
+      Serial.print('R');
       isClockwise = false;
     }
     else {
-      moveScaled(-16000, 200, 600, microstepsVal);
+      Serial.print('F');
       isClockwise = true;
     }
     stepper.enableOutputs();
   }
 
-  if (millis() - prevMillis >= 200) {
-    uint32_t driverStatus = driver.DRV_STATUS();
-    Serial.println(driverStatus, HEX);
-    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-    prevMillis = millis();
-  }
-
   stepper.run();
 }
 
+// Move, with scaled values based on microsteps. All values in full steps / sec.
 void moveScaled(long long steps, int accel, int speed, int microstepValue) {
   if (microstepValue == 0) microstepValue = 1;
 

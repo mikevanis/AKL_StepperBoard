@@ -42,12 +42,12 @@ void setup() {
   pinMode(ENDSTOP1, INPUT_PULLUP);
   pinMode(ENDSTOP2, INPUT_PULLUP);
   pinMode(TX_EN, OUTPUT);
-  digitalWrite(TX_EN, HIGH);
+  digitalWrite(TX_EN, LOW);
 
   SPI.begin();
-  Serial.begin(9600);
-  while (!Serial);
-  Serial.println("Start...");
+  Serial.begin(115200);
+  //while (!Serial);
+  //Serial.println("Start...");
   pinMode(CS_PIN, OUTPUT);
   digitalWrite(CS_PIN, HIGH);
   pinMode(CS2_PIN, OUTPUT);
@@ -76,39 +76,36 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  moveScaled(8000, 200, 1000, microstepsVal);
   //home(2000);
 }
 
 void loop() {
-  if (stepper.distanceToGo() == 0) {
-    Serial.println("Finished steps.");
-    
-    digitalWrite(LED, HIGH);
-    delay(10);
-    digitalWrite(LED, LOW);
-    //stepper.disableOutputs();
-    delay(100);
-    if (isClockwise) {
-      moveScaled(16000, 200, 600, microstepsVal);
-      isClockwise = false;
+  if (Serial.available() > 0) {
+    char inChar = Serial.read();
+    if (inChar == 'F') forward();
+    else if (inChar == 'R') reverse();
+    else if (inChar == 0) {
+      digitalWrite(LED, HIGH);
+      delay(100);
+      digitalWrite(LED, LOW);
     }
-    else {
-      moveScaled(-16000, 200, 600, microstepsVal);
-      isClockwise = true;
-    }
-    stepper.enableOutputs();
   }
-
-  if (millis() - prevMillis >= 200) {
-    uint32_t driverStatus = driver.DRV_STATUS();
-    Serial.println(driverStatus, HEX);
-    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-    prevMillis = millis();
-  }
-
+  
   stepper.run();
+}
+
+void forward() {
+  digitalWrite(LED, HIGH);
+  delay(10);
+  digitalWrite(LED, LOW);
+  moveScaled(-5500, 200, 600, microstepsVal);
+}
+
+void reverse() {
+  digitalWrite(LED, HIGH);
+  delay(10);
+  digitalWrite(LED, LOW);
+  moveScaled(5500, 200, 600, microstepsVal);
 }
 
 void moveScaled(long long steps, int accel, int speed, int microstepValue) {
