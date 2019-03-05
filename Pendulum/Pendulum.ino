@@ -9,21 +9,24 @@
 #define ENDSTOP2 10
 #define TX_EN 2
 
-boolean isClockwise = false;
+boolean isClockwise = true;
+boolean hasMoved = false;
 
-//#define DOUBLEMOTOR
+#define DOUBLEMOTOR
 #define RMS_CURRENT 800
 
 #include <TMC2130Stepper.h>
-TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
+//TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
+TMC2130Stepper driver(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN, 11, 12, 13);
 #ifdef DOUBLEMOTOR
-TMC2130Stepper driver2 = TMC2130Stepper(EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN);
+//TMC2130Stepper driver2 = TMC2130Stepper(EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN);
+TMC2130Stepper driver2 (EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN, 11, 12, 13);
 #endif
 
 #include <AccelStepper.h>
 AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 
-#include <SPI.h>
+//#include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
 byte microstepsVal = 16;
@@ -44,7 +47,7 @@ void setup() {
   pinMode(TX_EN, OUTPUT);
   digitalWrite(TX_EN, HIGH);
 
-  SPI.begin();
+  //SPI.begin();
   Serial.begin(9600);
   while (!Serial);
   Serial.println("Start...");
@@ -76,14 +79,15 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  moveScaled(2250, 50, 200, microstepsVal);
-  //home(2000);
+  //moveScaled(2250, 50, 200, microstepsVal);
+  home(4700);
+  moveScaled(-4500, 50, 200, microstepsVal);
 }
 
 void loop() {
   if (stepper.distanceToGo() == 0) {
     Serial.println("Finished steps.");
-    
+
     digitalWrite(LED, HIGH);
     delay(10);
     digitalWrite(LED, LOW);
@@ -107,7 +111,10 @@ void loop() {
     if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
     prevMillis = millis();
   }
-
+  checkOverFlow();
+  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false) {
+    hasMoved = true;
+  }
   stepper.run();
 }
 
@@ -119,16 +126,17 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
   stepper.move(steps * microstepValue);
 }
 
-// Home 
+// Home
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 300, 4);
+  moveScaled(steps, 50, 200, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
   stepper.setCurrentPosition(0);
   stepper.stop();
   digitalWrite(LED, LOW);
+  hasMoved = false;
 }
 
 // Enable driver outputs
@@ -145,4 +153,18 @@ void disableOutputs() {
 #ifdef DOUBLEMOTOR
   digitalWrite(EN2_PIN, HIGH);
 #endif
+}
+
+void checkOverFlow() {
+  if (digitalRead(ENDSTOP2) == LOW) {
+    stepper.stop();
+    home(4700);
+    moveScaled(-4600, 50, 200, microstepsVal);
+    isClockwise = true;
+  }
+  if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
+    stepper.setCurrentPosition(0);
+    stepper.stop();
+    isClockwise = true;
+  }
 }
