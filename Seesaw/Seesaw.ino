@@ -1,3 +1,8 @@
+/*
+ * TODO
+ * - Home. Send R. Go half way. Wait. Send F.
+ */
+
 #define EN_PIN 3
 #define EN2_PIN A5
 #define DIR_PIN 4
@@ -12,7 +17,7 @@
 boolean isClockwise = false;
 
 //#define DOUBLEMOTOR
-#define RMS_CURRENT 800
+#define RMS_CURRENT 1000
 
 #include <TMC2130Stepper.h>
 TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
@@ -28,7 +33,12 @@ AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
 byte microstepsVal = 16;
 
+boolean endstopHit = false;
+boolean hasBeltHomed = false;
+
 unsigned long prevMillis;
+
+long totalStepsPerRevolution = 107655;
 
 void setup() {
   pinMode(LED, OUTPUT);
@@ -42,12 +52,11 @@ void setup() {
   pinMode(ENDSTOP1, INPUT_PULLUP);
   pinMode(ENDSTOP2, INPUT_PULLUP);
   pinMode(TX_EN, OUTPUT);
-  digitalWrite(TX_EN, HIGH);
+  digitalWrite(TX_EN, LOW);
 
   SPI.begin();
   Serial.begin(115600);
   while (!Serial);
-  //Serial.println("Start...");
   pinMode(CS_PIN, OUTPUT);
   digitalWrite(CS_PIN, HIGH);
   pinMode(CS2_PIN, OUTPUT);
@@ -74,7 +83,20 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  //home(2000);
+  digitalWrite(LED, HIGH);
+
+  while (!hasBeltHomed) {
+    if (Serial.available() > 0) {
+      char inChar = Serial.read();
+      if (inChar == 'H') hasBeltHomed = true;
+    }
+  }
+
+  home(10000);
+
+  digitalWrite(LED, LOW);
+  digitalWrite(TX_EN, HIGH);
+  delay(1000);
 }
 
 void loop() {
@@ -82,18 +104,29 @@ void loop() {
     digitalWrite(LED, HIGH);
     delay(10);
     digitalWrite(LED, LOW);
-    //stepper.disableOutputs();
-    delay(100);
-    moveScaled(6000, 50, 200, microstepsVal);
-    if (isClockwise) {
-      Serial.print('R');
-      isClockwise = false;
+    
+    // Check if endstop is pressed. If not, home. 
+    if (digitalRead(ENDSTOP1) == HIGH) {
+      home(10000);
     }
-    else {
-      Serial.print('F');
-      isClockwise = true;
-    }
+    
+    stepper.setCurrentPosition(0);
+    moveScaled(totalStepsPerRevolution/microstepsVal, 100, 200, microstepsVal);
     stepper.enableOutputs();
+    Serial.print('R');
+  }
+  else if (stepper.distanceToGo() == totalStepsPerRevolution / 2) {
+    Serial.print('F');
+  }
+  else {
+    // If endstop is hit, zero position and start sequence from scratch.
+    if (digitalRead(ENDSTOP1) == LOW && endstopHit == false) {
+      stepper.setCurrentPosition(0);
+      stepper.stop();
+    }
+    if (digitalRead(ENDSTOP1) == HIGH && endstopHit == true) {
+      endstopHit = true;
+    }
   }
 
   stepper.run();
@@ -110,14 +143,13 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
 
 // Home 
 void home(long long steps) {
-  digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 300, 4);
+  moveScaled(steps, 50, 200, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
   stepper.setCurrentPosition(0);
   stepper.stop();
-  digitalWrite(LED, LOW);
+  endstopHit = true;
 }
 
 // Enable driver outputs

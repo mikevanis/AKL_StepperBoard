@@ -45,9 +45,9 @@ void setup() {
   digitalWrite(TX_EN, HIGH);
 
   SPI.begin();
-  Serial.begin(115200);
-  //while (!Serial);
-  //Serial.println("Start...");
+  Serial.begin(9600);
+  while (!Serial);
+  Serial.println("Start...");
   pinMode(CS_PIN, OUTPUT);
   digitalWrite(CS_PIN, HIGH);
   pinMode(CS2_PIN, OUTPUT);
@@ -76,43 +76,29 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  home(10000);
-  moveScaled(-5500, 200, 480, microstepsVal);
-  while (stepper.distanceToGo() != 0) {
-    stepper.run();
-  }
-  Serial.print("H");
-  delay(100);
-  digitalWrite(TX_EN, LOW);
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    char inChar = Serial.read();
-    if (inChar == 'F') forward();
-    else if (inChar == 'R') reverse();
-    else if (inChar == 0) {
-      digitalWrite(LED, HIGH);
-      delay(100);
-      digitalWrite(LED, LOW);
+  if (stepper.distanceToGo() == 0) {
+    Serial.println("Finished steps.");
+    
+    digitalWrite(LED, HIGH);
+    delay(10);
+    digitalWrite(LED, LOW);
+    //stepper.disableOutputs();
+    delay(100);
+    if (isClockwise) {
+      moveScaled(16000, 200, 600, microstepsVal);
+      isClockwise = false;
     }
+    else {
+      moveScaled(-16000, 200, 600, microstepsVal);
+      isClockwise = true;
+    }
+    stepper.enableOutputs();
   }
-  
+
   stepper.run();
-}
-
-void forward() {
-  digitalWrite(LED, HIGH);
-  delay(10);
-  digitalWrite(LED, LOW);
-  moveScaled(-5500, 200, 260, microstepsVal);
-}
-
-void reverse() {
-  digitalWrite(LED, HIGH);
-  delay(10);
-  digitalWrite(LED, LOW);
-  moveScaled(5500, 200, 260, microstepsVal);
 }
 
 void moveScaled(long long steps, int accel, int speed, int microstepValue) {
@@ -126,7 +112,7 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
 // Home 
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 300, microstepsVal);
+  moveScaled(steps, 200, 300, 4);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
