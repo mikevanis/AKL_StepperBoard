@@ -11,21 +11,19 @@
 
 boolean isClockwise = false;
 
-#define DOUBLEMOTOR
-#define RMS_CURRENT 1000
+//#define DOUBLEMOTOR
+#define RMS_CURRENT 800
 
 #include <TMC2130Stepper.h>
-//TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
-TMC2130Stepper driver(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN, 11, 12, 13);
+TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
 #ifdef DOUBLEMOTOR
-//TMC2130Stepper driver2 = TMC2130Stepper(EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN);
-TMC2130Stepper driver2 (EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN, 11, 12, 13);
+TMC2130Stepper driver2 = TMC2130Stepper(EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN);
 #endif
 
 #include <AccelStepper.h>
 AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 
-//#include <SPI.h>
+#include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
 byte microstepsVal = 16;
@@ -46,7 +44,7 @@ void setup() {
   pinMode(TX_EN, OUTPUT);
   digitalWrite(TX_EN, HIGH);
 
-  //SPI.begin();
+  SPI.begin();
   Serial.begin(9600);
   while (!Serial);
   Serial.println("Start...");
@@ -78,9 +76,7 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-
-  pinMode(ENDSTOP1, INPUT_PULLUP);
-  pinMode(ENDSTOP2, INPUT_PULLUP);
+  moveScaled(1450, 50, 150, microstepsVal);
 }
 
 void loop() {
@@ -93,11 +89,11 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(16000, 50, 100, microstepsVal);
+      moveScaled(2900, 50, 150, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-16000, 50, 100, microstepsVal);
+      moveScaled(-2900, 50, 150, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
