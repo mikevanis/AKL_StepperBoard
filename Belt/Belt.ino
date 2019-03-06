@@ -30,6 +30,8 @@ byte microstepsVal = 8;
 
 unsigned long prevMillis;
 
+boolean hasSentDone = true;
+
 void setup() {
   pinMode(LED, OUTPUT);
   for (int i = 0; i < 4; i++) {
@@ -77,7 +79,7 @@ void setup() {
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
   home(10000);
-  moveScaled(-5500, 200, 480, microstepsVal);
+  moveScaled(-5750, 200, 480, microstepsVal);
   while (stepper.distanceToGo() != 0) {
     stepper.run();
   }
@@ -97,6 +99,15 @@ void loop() {
       digitalWrite(LED, LOW);
     }
   }
+
+  if (stepper.distanceToGo() == 0 && hasSentDone == false) {
+    digitalWrite(TX_EN, HIGH);
+    delay(100);
+    Serial.print('D');
+    delay(100);
+    digitalWrite(TX_EN, LOW);
+    hasSentDone = true;
+  }
   
   stepper.run();
 }
@@ -105,14 +116,16 @@ void forward() {
   digitalWrite(LED, HIGH);
   delay(10);
   digitalWrite(LED, LOW);
-  moveScaled(-5500, 200, 260, microstepsVal);
+  moveScaled(-5500, 120, 380, microstepsVal);
+  hasSentDone = false;
 }
 
 void reverse() {
   digitalWrite(LED, HIGH);
   delay(10);
   digitalWrite(LED, LOW);
-  moveScaled(5500, 200, 260, microstepsVal);
+  moveScaled(5500, 120, 380, microstepsVal);
+  hasSentDone = false;
 }
 
 void moveScaled(long long steps, int accel, int speed, int microstepValue) {

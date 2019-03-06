@@ -1,7 +1,7 @@
 /*
- * TODO
- * - Home. Send R. Go half way. Wait. Send F.
- */
+   TODO
+   - Home. Send R. Go half way. Wait. Send F.
+*/
 
 #define EN_PIN 3
 #define EN2_PIN A5
@@ -14,10 +14,8 @@
 #define ENDSTOP2 10
 #define TX_EN 2
 
-boolean isClockwise = false;
-
 //#define DOUBLEMOTOR
-#define RMS_CURRENT 1000
+#define RMS_CURRENT 1200
 
 #include <TMC2130Stepper.h>
 TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
@@ -35,6 +33,8 @@ byte microstepsVal = 16;
 
 boolean endstopHit = false;
 boolean hasBeltHomed = false;
+boolean hasReversed = false;
+boolean hasBeltFinished = true;
 
 unsigned long prevMillis;
 
@@ -104,19 +104,43 @@ void loop() {
     digitalWrite(LED, HIGH);
     delay(10);
     digitalWrite(LED, LOW);
-    
-    // Check if endstop is pressed. If not, home. 
-    if (digitalRead(ENDSTOP1) == HIGH) {
-      home(10000);
+
+    // Wait for the belt to finish its movement.
+    while (!hasBeltFinished) {
+      if (Serial.available() > 0) {
+        char inChar = Serial.read();
+        if (inChar == 'D') hasBeltFinished = true;
+      }
     }
-    
-    stepper.setCurrentPosition(0);
-    moveScaled(totalStepsPerRevolution/microstepsVal, 100, 200, microstepsVal);
+
+    // If we've reached home again,
+    if (hasReversed == false) {
+      // Check if endstop is pressed. If not, home.
+      if (digitalRead(ENDSTOP1) == HIGH) {
+        home(10000);
+      }
+      stepper.setCurrentPosition(0);
+    }
+
+    moveScaled(totalStepsPerRevolution / microstepsVal / 2, 100, 200, microstepsVal);
     stepper.enableOutputs();
-    Serial.print('R');
-  }
-  else if (stepper.distanceToGo() == totalStepsPerRevolution / 2) {
-    Serial.print('F');
+
+    digitalWrite(TX_EN, HIGH);
+    delay(100);
+
+    if (hasReversed) {
+      Serial.print('F');
+      hasReversed = false;
+      hasBeltFinished = false;
+    }
+    else {
+      Serial.print('R');
+      hasReversed = true;
+      hasBeltFinished = false;
+    }
+
+    delay(100);
+    digitalWrite(TX_EN, LOW);
   }
   else {
     // If endstop is hit, zero position and start sequence from scratch.
@@ -141,7 +165,7 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
   stepper.move(steps * microstepValue);
 }
 
-// Home 
+// Home
 void home(long long steps) {
   moveScaled(steps, 50, 200, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
