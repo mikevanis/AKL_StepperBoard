@@ -158,6 +158,7 @@ void disableOutputs() {
 
 void checkOverFlow() {
   if (digitalRead(ENDSTOP2) == LOW) {
+    stepper.setCurrentPosition(0);
     stepper.stop();
     home(17500);
     moveScaled(-17300, 200, 600, microstepsVal);
