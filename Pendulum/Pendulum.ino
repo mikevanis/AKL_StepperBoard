@@ -79,9 +79,13 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
+
+  pinMode(ENDSTOP1, INPUT_PULLUP);
+  pinMode(ENDSTOP2, INPUT_PULLUP);
+  
   //moveScaled(2250, 50, 200, microstepsVal);
   home(4700);
-  moveScaled(-4500, 50, 200, microstepsVal);
+  moveScaled(-3850, 50, 200, microstepsVal);
 }
 
 void loop() {
@@ -94,11 +98,11 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(4500, 50, 200, microstepsVal);
+      moveScaled(3475, 50, 200, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-4500, 50, 200, microstepsVal);
+      moveScaled(-3475, 50, 200, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
@@ -157,9 +161,10 @@ void disableOutputs() {
 
 void checkOverFlow() {
   if (digitalRead(ENDSTOP2) == LOW) {
+    stepper.setCurrentPosition(0);
     stepper.stop();
     home(4700);
-    moveScaled(-4600, 50, 200, microstepsVal);
+    moveScaled(-3850, 50, 200, microstepsVal);
     isClockwise = true;
   }
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
