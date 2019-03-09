@@ -170,6 +170,6 @@ void checkOverFlow() {
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
     stepper.setCurrentPosition(0);
     stepper.stop();
-    isClockwise = true;
+    isClockwise = false;
   }
 }

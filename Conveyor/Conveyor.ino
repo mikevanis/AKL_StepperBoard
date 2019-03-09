@@ -10,8 +10,9 @@
 #define TX_EN 2
 
 boolean isClockwise = false;
+boolean hasMoved = false;
 
-#define DOUBLEMOTOR
+//#define DOUBLEMOTOR
 #define RMS_CURRENT 1000
 
 #include <TMC2130Stepper.h>
@@ -24,8 +25,6 @@ TMC2130Stepper driver2 (EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN, 11, 12, 13);
 
 #include <AccelStepper.h>
 AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
-
-//#include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
 byte microstepsVal = 16;
@@ -46,7 +45,6 @@ void setup() {
   pinMode(TX_EN, OUTPUT);
   digitalWrite(TX_EN, HIGH);
 
-  //SPI.begin();
   Serial.begin(9600);
   while (!Serial);
   Serial.println("Start...");
@@ -81,6 +79,9 @@ void setup() {
 
   pinMode(ENDSTOP1, INPUT_PULLUP);
   pinMode(ENDSTOP2, INPUT_PULLUP);
+
+  home(-16000);
+  moveScaled(4000, 50, 200, microstepsVal);
 }
 
 void loop() {
@@ -93,14 +94,19 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(16000, 50, 100, microstepsVal);
+      moveScaled(3900, 50, 200, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-16000, 50, 100, microstepsVal);
+      moveScaled(-3900, 50, 200, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
+  }
+
+  checkOverFlow();
+  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false) {
+    hasMoved = true;
   }
 
   stepper.run();
@@ -117,13 +123,14 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
 // Home 
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 300, 4);
+  moveScaled(steps, 200, 300, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
   stepper.setCurrentPosition(0);
   stepper.stop();
   digitalWrite(LED, LOW);
+  hasMoved = false;
 }
 
 // Enable driver outputs
@@ -140,4 +147,12 @@ void disableOutputs() {
 #ifdef DOUBLEMOTOR
   digitalWrite(EN2_PIN, HIGH);
 #endif
+}
+
+void checkOverFlow() {
+  if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
+    stepper.setCurrentPosition(0);
+    stepper.stop();
+    isClockwise = false;
+  }
 }
