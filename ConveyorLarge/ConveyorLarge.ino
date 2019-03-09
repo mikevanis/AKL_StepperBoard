@@ -13,7 +13,7 @@ boolean isClockwise = true;
 boolean hasMoved = false;
 
 //#define DOUBLEMOTOR
-#define RMS_CURRENT 800
+#define RMS_CURRENT 1000
 
 #include <TMC2130Stepper.h>
 //TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
@@ -25,8 +25,6 @@ TMC2130Stepper driver2 (EN2_PIN, DIR_PIN, STEP_PIN, CS2_PIN, 11, 12, 13);
 
 #include <AccelStepper.h>
 AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
-
-//#include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
 byte microstepsVal = 16;
@@ -47,7 +45,6 @@ void setup() {
   pinMode(TX_EN, OUTPUT);
   digitalWrite(TX_EN, HIGH);
 
-  //SPI.begin();
   Serial.begin(9600);
   while (!Serial);
   Serial.println("Start...");
@@ -82,43 +79,47 @@ void setup() {
 
   pinMode(ENDSTOP1, INPUT_PULLUP);
   pinMode(ENDSTOP2, INPUT_PULLUP);
-  
-  //moveScaled(2250, 50, 200, microstepsVal);
-  home(4700);
-  moveScaled(-2650, 50, 200, microstepsVal);
+
+  home(16000);
+  moveScaled(-4000, 50, 200, microstepsVal);
+  hasMoved = false;
 }
 
 void loop() {
   if (stepper.distanceToGo() == 0) {
     Serial.println("Finished steps.");
-
+    
     digitalWrite(LED, HIGH);
     delay(10);
     digitalWrite(LED, LOW);
     //stepper.disableOutputs();
     delay(100);
+
+    // If we've reached home again,
+    if (isClockwise == false) {
+      // Check if endstop is pressed. If not, home.
+      if (digitalRead(ENDSTOP1) == HIGH) {
+        home(16000);
+      }
+      stepper.setCurrentPosition(0);
+    }
+    
     if (isClockwise) {
-      moveScaled(2600, 50, 200, microstepsVal);
+      moveScaled(4000, 50, 200, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-2600, 50, 200, microstepsVal);
+      moveScaled(-4000, 50, 200, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
   }
 
-  if (millis() - prevMillis >= 200) {
-    uint32_t driverStatus = driver.DRV_STATUS();
-    Serial.println(driverStatus, HEX);
-    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-    prevMillis = millis();
-  }
   checkOverFlow();
   if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false) {
     hasMoved = true;
   }
+
   stepper.run();
 }
 
@@ -130,17 +131,16 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
   stepper.move(steps * microstepValue);
 }
 
-// Home
+// Home 
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 50, 200, microstepsVal);
+  moveScaled(steps, 200, 300, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
   stepper.setCurrentPosition(0);
   stepper.stop();
   digitalWrite(LED, LOW);
-  hasMoved = false;
 }
 
 // Enable driver outputs
@@ -160,13 +160,6 @@ void disableOutputs() {
 }
 
 void checkOverFlow() {
-  if (digitalRead(ENDSTOP2) == LOW) {
-    stepper.setCurrentPosition(0);
-    stepper.stop();
-    home(4700);
-    moveScaled(-2650, 50, 200, microstepsVal);
-    isClockwise = true;
-  }
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
     stepper.setCurrentPosition(0);
     stepper.stop();
