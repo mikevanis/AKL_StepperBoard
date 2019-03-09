@@ -93,12 +93,22 @@ void loop() {
     digitalWrite(LED, LOW);
     //stepper.disableOutputs();
     delay(100);
+
+    // If we've reached home again,
+    if (isClockwise == true) {
+      // Check if endstop is pressed. If not, home.
+      if (digitalRead(ENDSTOP1) == HIGH) {
+        home(-16000);
+      }
+      stepper.setCurrentPosition(0);
+    }
+    
     if (isClockwise) {
-      moveScaled(3900, 50, 200, microstepsVal);
+      moveScaled(4000, 50, 200, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-3900, 50, 200, microstepsVal);
+      moveScaled(-4000, 50, 200, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
