@@ -85,7 +85,7 @@ void setup() {
   
   //moveScaled(2250, 50, 200, microstepsVal);
   home(4700);
-  moveScaled(-2650, 50, 200, microstepsVal);
+  moveScaled(-2600, 50, 150, microstepsVal);
 }
 
 void loop() {
@@ -98,23 +98,17 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(2600, 50, 200, microstepsVal);
+      moveScaled(2550, 50, 150, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-2600, 50, 200, microstepsVal);
+      moveScaled(-2550, 50, 150, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
+    delay(1000);
   }
-
-  if (millis() - prevMillis >= 200) {
-    uint32_t driverStatus = driver.DRV_STATUS();
-    Serial.println(driverStatus, HEX);
-    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-    prevMillis = millis();
-  }
+  
   checkOverFlow();
   if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false) {
     hasMoved = true;
@@ -164,7 +158,7 @@ void checkOverFlow() {
     stepper.setCurrentPosition(0);
     stepper.stop();
     home(4700);
-    moveScaled(-2650, 50, 200, microstepsVal);
+    moveScaled(-2600, 50, 150, microstepsVal);
     isClockwise = true;
   }
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
