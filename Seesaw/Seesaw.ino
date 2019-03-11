@@ -92,8 +92,29 @@ void setup() {
     }
   }
 
-  home(10000);
+  if (digitalRead(ENDSTOP1) == LOW) {
+    moveScaled(1500, 50, 200, microstepsVal);
+    while(stepper.distanceToGo() > 0) {
+      stepper.run();
+    }
+  }
 
+  home(10000);
+  
+  // Count amount of steps by doing another revolution.
+  boolean hasCountedSteps = false;
+  moveScaled(10000, 50, 200, microstepsVal);
+  while (hasCountedSteps == false) {
+    stepper.run();
+    if (digitalRead(ENDSTOP1) == LOW && stepper.currentPosition() > 25000) {
+      hasCountedSteps = true;
+      totalStepsPerRevolution = stepper.currentPosition();
+    }
+  }
+  stepper.setCurrentPosition(0);
+  stepper.stop();
+  endstopHit = true;
+  
   digitalWrite(LED, LOW);
   digitalWrite(TX_EN, HIGH);
   delay(1000);
