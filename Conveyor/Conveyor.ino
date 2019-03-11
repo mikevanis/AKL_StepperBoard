@@ -9,7 +9,7 @@
 #define ENDSTOP2 10
 #define TX_EN 2
 
-boolean isClockwise = false;
+boolean isReversing = false;
 boolean hasMoved = false;
 
 //#define DOUBLEMOTOR
@@ -78,7 +78,6 @@ void setup() {
   enableOutputs();
 
   pinMode(ENDSTOP1, INPUT_PULLUP);
-  pinMode(ENDSTOP2, INPUT_PULLUP);
 
   home(-16000);
   moveScaled(4000, 50, 200, microstepsVal);
@@ -94,24 +93,20 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
 
-    // If we've reached home again,
-    if (isClockwise == true) {
-      // Check if endstop is pressed. If not, home.
+    // If we've reached home again, Check that the endstop is pressed.
+    if (isReversing) {
       if (digitalRead(ENDSTOP1) == HIGH) {
-        home(-16000);
+        home(-5000);
       }
-      stepper.setCurrentPosition(0);
-    }
-    
-    if (isClockwise) {
       moveScaled(4000, 50, 200, microstepsVal);
-      isClockwise = false;
+      isReversing = false;
     }
     else {
       moveScaled(-4000, 50, 200, microstepsVal);
-      isClockwise = true;
+      isReversing = true;
     }
     stepper.enableOutputs();
+    hasMoved = false;
   }
 
   checkOverFlow();
@@ -160,9 +155,9 @@ void disableOutputs() {
 }
 
 void checkOverFlow() {
-  if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
+  if (digitalRead(ENDSTOP1) == LOW && hasMoved == true && stepper.currentPosition() > 2000) {
     stepper.setCurrentPosition(0);
     stepper.stop();
-    isClockwise = false;
+    isReversing = true;
   }
 }
