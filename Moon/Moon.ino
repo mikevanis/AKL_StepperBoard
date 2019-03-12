@@ -13,7 +13,7 @@ boolean isClockwise = true;
 boolean hasMoved = false;
 
 //#define DOUBLEMOTOR
-#define RMS_CURRENT 800
+#define RMS_CURRENT 1000
 
 #include <TMC2130Stepper.h>
 //TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
@@ -105,15 +105,15 @@ void loop() {
     stepper.enableOutputs();
   }
 
-  if (millis() - prevMillis >= 200) {
-    uint32_t driverStatus = driver.DRV_STATUS();
-    Serial.println(driverStatus, HEX);
-    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-    prevMillis = millis();
-  }
+//  if (millis() - prevMillis >= 200) {
+//    uint32_t driverStatus = driver.DRV_STATUS();
+//    Serial.println(driverStatus, HEX);
+//    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
+//    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
+//    prevMillis = millis();
+//  }
   checkOverFlow();
-  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false) {
+  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false && stepper.currentPosition() > 5000) {
     hasMoved = true;
   }
   stepper.run();
@@ -130,7 +130,7 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
 // Home
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 600, microstepsVal);
+  moveScaled(steps, 200, 400, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }

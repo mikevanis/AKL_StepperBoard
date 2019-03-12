@@ -85,7 +85,7 @@ void setup() {
   
   //moveScaled(2250, 50, 200, microstepsVal);
   home(4700);
-  moveScaled(-2600, 50, 150, microstepsVal);
+  moveScaled(-3200, 50, 150, microstepsVal);
 }
 
 void loop() {
@@ -98,11 +98,11 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(2550, 50, 150, microstepsVal);
+      moveScaled(2950, 50, 150, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-2550, 50, 150, microstepsVal);
+      moveScaled(-2950, 50, 150, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
@@ -158,7 +158,7 @@ void checkOverFlow() {
     stepper.setCurrentPosition(0);
     stepper.stop();
     home(4700);
-    moveScaled(-2600, 50, 150, microstepsVal);
+    moveScaled(-3200, 50, 150, microstepsVal);
     isClockwise = true;
   }
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
