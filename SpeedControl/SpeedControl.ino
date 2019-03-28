@@ -8,12 +8,25 @@
 #define ENDSTOP1 9
 #define ENDSTOP2 10
 #define TX_EN 2
+#define POT1 A0
+#define POT2 A1
 
 boolean isClockwise = true;
 boolean hasMoved = false;
 
+// ---------- Settings -------------
+
 //#define DOUBLEMOTOR
-#define RMS_CURRENT 800
+#define RMS_CURRENT 800         // RMS current in mA (max is 1200), use fan above 600
+#define MINSPEED 5              // Minimum speed in steps / sec
+#define MAXSPEED 400            // Maximum speed in steps / sec
+boolean runBackwards = false;   // Set to true to run backwards
+boolean smoothStart = false;    // Set to true to start program by accelerating up to the pot's speed
+
+// Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
+byte microstepsVal = 16;
+
+// ---------------------------------
 
 #include <TMC2130Stepper.h>
 //TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
@@ -28,8 +41,7 @@ AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 
 //#include <SPI.h>
 
-// Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
-byte microstepsVal = 8;
+int negativeMultiplier = 1;
 
 unsigned long prevMillis;
 
@@ -74,49 +86,38 @@ void setup() {
   driver2.microsteps(microstepsVal);
 #endif
 
-  stepper.setMaxSpeed(2000); // Max speed in steps / second. Do not set higher than 2000.
+  stepper.setMaxSpeed(MAXSPEED); // Max speed in steps / second. Do not set higher than 2000.
   stepper.setAcceleration(500); // Purely aesthetic, the lower the acceleration value, the slower the ramp at start / end.
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  // moveScaled(8000, 200, 1000, microstepsVal);
-  home(17400);
-  moveScaled(-13800, 200, 600, microstepsVal);
 
+  pinMode(ENDSTOP1, INPUT_PULLUP);
+  pinMode(ENDSTOP2, INPUT_PULLUP);
+
+  if (runBackwards) negativeMultiplier = -1;
+  else negativeMultiplier = 1;
+
+  // Start smoothly
+  if (smoothStart) {
+    int potVal = analogRead(POT1);
+    int potSpeed = map(potVal, 0, 1023, MINSPEED, MAXSPEED);
+    moveScaled(500 * negativeMultiplier, 50, potSpeed, microstepsVal);
+    while (stepper.distanceToGo() > 250 * microstepsVal) {
+      stepper.run();
+    }
+  }
 }
 
 void loop() {
-  if (stepper.distanceToGo() == 0) {
-    Serial.println("Finished steps.");
-
-    digitalWrite(LED, HIGH);
-    delay(10);
-    digitalWrite(LED, LOW);
-    //stepper.disableOutputs();
-    delay(100);
-    if (isClockwise) {
-      moveScaled(13700, 200, 600, microstepsVal);
-      isClockwise = false;
-    }
-    else {
-      moveScaled(-13700, 200, 600, microstepsVal);
-      isClockwise = true;
-    }
-    stepper.enableOutputs();
+  unsigned long currentTime = millis();
+  if (currentTime - prevMillis > 100) {
+    int potVal = analogRead(POT1);
+    int potSpeed = map(potVal, 0, 1023, MINSPEED, MAXSPEED);
+    setScaledSpeed(potSpeed * negativeMultiplier, microstepsVal);
+    prevMillis = currentTime;
   }
-
-//  if (millis() - prevMillis >= 200) {
-//    uint32_t driverStatus = driver.DRV_STATUS();
-//    Serial.println(driverStatus, HEX);
-//    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-//    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-//    prevMillis = millis();
-//  }
-  checkOverFlow();
-  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false && stepper.currentPosition() > 5000) {
-    hasMoved = true;
-  }
-  stepper.run();
+  stepper.runSpeed();
 }
 
 void moveScaled(long long steps, int accel, int speed, int microstepValue) {
@@ -127,10 +128,17 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
   stepper.move(steps * microstepValue);
 }
 
+void setScaledSpeed(int speed, int microstepValue) {
+  if (microstepValue == 0) microstepValue = 1;
+
+  stepper.setMaxSpeed(MAXSPEED);
+  stepper.setSpeed(speed * microstepValue);
+}
+
 // Home
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 400, microstepsVal);
+  moveScaled(steps, 50, 200, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
@@ -160,13 +168,13 @@ void checkOverFlow() {
   if (digitalRead(ENDSTOP2) == LOW) {
     stepper.setCurrentPosition(0);
     stepper.stop();
-    home(17500);
-    moveScaled(-13800, 200, 600, microstepsVal);
+    home(4700);
+    moveScaled(-3200, 50, 150, microstepsVal);
     isClockwise = true;
   }
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
     stepper.setCurrentPosition(0);
     stepper.stop();
-    isClockwise = true;
+    isClockwise = false;
   }
 }

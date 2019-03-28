@@ -14,6 +14,8 @@ boolean hasMoved = false;
 
 //#define DOUBLEMOTOR
 #define RMS_CURRENT 800
+#define RANGE 1100
+#define PADDING 50
 
 #include <TMC2130Stepper.h>
 //TMC2130Stepper driver = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
@@ -29,7 +31,7 @@ AccelStepper stepper = AccelStepper(stepper.DRIVER, STEP_PIN, DIR_PIN);
 //#include <SPI.h>
 
 // Microstepping - 0, 2, 4, 8, 16, 32, 64, 128, 255. The lower the value, the faster the motor.
-byte microstepsVal = 8;
+byte microstepsVal = 32;
 
 unsigned long prevMillis;
 
@@ -79,10 +81,14 @@ void setup() {
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   enableOutputs();
-  // moveScaled(8000, 200, 1000, microstepsVal);
-  home(17400);
-  moveScaled(-13800, 200, 600, microstepsVal);
 
+  pinMode(ENDSTOP1, INPUT_PULLUP);
+  pinMode(ENDSTOP2, INPUT_PULLUP);
+  
+  //moveScaled(2250, 50, 200, microstepsVal);
+  home(RANGE+1000);
+  delay(1000);
+  moveScaled(-(RANGE+PADDING), 50, 100, microstepsVal);
 }
 
 void loop() {
@@ -95,25 +101,19 @@ void loop() {
     //stepper.disableOutputs();
     delay(100);
     if (isClockwise) {
-      moveScaled(13700, 200, 600, microstepsVal);
+      moveScaled(RANGE, 50, 100, microstepsVal);
       isClockwise = false;
     }
     else {
-      moveScaled(-13700, 200, 600, microstepsVal);
+      moveScaled(-RANGE, 50, 100, microstepsVal);
       isClockwise = true;
     }
     stepper.enableOutputs();
+    delay(1000);
   }
-
-//  if (millis() - prevMillis >= 200) {
-//    uint32_t driverStatus = driver.DRV_STATUS();
-//    Serial.println(driverStatus, HEX);
-//    if (driverStatus & 0x2000000UL) Serial.println("Overtemperature warning!");
-//    if (driverStatus & 0x4000000UL) Serial.println("Overtemperature prewarning!");
-//    prevMillis = millis();
-//  }
+  
   checkOverFlow();
-  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false && stepper.currentPosition() > 5000) {
+  if (digitalRead(ENDSTOP1) == HIGH && hasMoved == false) {
     hasMoved = true;
   }
   stepper.run();
@@ -130,7 +130,7 @@ void moveScaled(long long steps, int accel, int speed, int microstepValue) {
 // Home
 void home(long long steps) {
   digitalWrite(LED, HIGH);
-  moveScaled(steps, 200, 400, microstepsVal);
+  moveScaled(steps, 50, 100, microstepsVal);
   while (digitalRead(ENDSTOP1) == HIGH) {
     stepper.run();
   }
@@ -160,13 +160,14 @@ void checkOverFlow() {
   if (digitalRead(ENDSTOP2) == LOW) {
     stepper.setCurrentPosition(0);
     stepper.stop();
-    home(17500);
-    moveScaled(-13800, 200, 600, microstepsVal);
+    home(RANGE+1000);
+    delay(1000);
+    moveScaled(-(RANGE+PADDING), 50, 100, microstepsVal);
     isClockwise = true;
   }
   if (digitalRead(ENDSTOP1) == LOW && hasMoved == true) {
     stepper.setCurrentPosition(0);
     stepper.stop();
-    isClockwise = true;
+    isClockwise = false;
   }
 }
